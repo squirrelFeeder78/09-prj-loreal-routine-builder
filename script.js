@@ -126,9 +126,11 @@ const ltrLangs = [
 function setDirectionByLanguage(lang) {
   if (rtlLangs.some((rtl) => lang.startsWith(rtl))) {
     isRTL = true;
+    document.documentElement.setAttribute("dir", "rtl"); // Set <html> dir
     document.body.dir = "rtl";
   } else {
     isRTL = false;
+    document.documentElement.setAttribute("dir", "ltr"); // Set <html> dir
     document.body.dir = "ltr";
   }
   // Update direction for product grid, selected products, chat window
@@ -136,11 +138,48 @@ function setDirectionByLanguage(lang) {
   const selectedList = document.getElementById("selectedProductsList");
   if (selectedList) selectedList.dir = isRTL ? "rtl" : "ltr";
   chatWindow.dir = isRTL ? "rtl" : "ltr";
+  updateBootstrapRTL(); // Add this line
+}
+
+// Add Bootstrap CSS and Bootstrap RTL CSS to the page
+const bootstrapLink = document.createElement("link");
+bootstrapLink.rel = "stylesheet";
+bootstrapLink.href =
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css";
+document.head.appendChild(bootstrapLink);
+
+const bootstrapRtlLink = document.createElement("link");
+bootstrapRtlLink.rel = "stylesheet";
+bootstrapRtlLink.href =
+  "https://cdn.jsdelivr.net/npm/bootstrap-rtl@5.3.3/dist/css/bootstrap-rtl.min.css";
+document.head.appendChild(bootstrapRtlLink);
+
+// Function to enable/disable Bootstrap RTL classes
+function updateBootstrapRTL() {
+  if (isRTL) {
+    document.body.classList.add("rtl");
+    document.body.classList.remove("ltr");
+  } else {
+    document.body.classList.add("ltr");
+    document.body.classList.remove("rtl");
+  }
 }
 
 // Detect language on page load and set direction
 const userLang = navigator.language || navigator.userLanguage || "";
 setDirectionByLanguage(userLang);
+
+// --- Add: MutationObserver to detect lang changes on <html> ---
+const htmlObserver = new MutationObserver((mutationsList) => {
+  for (const mutation of mutationsList) {
+    if (mutation.type === "attributes" && mutation.attributeName === "lang") {
+      const newLang = document.documentElement.getAttribute("lang") || "";
+      setDirectionByLanguage(newLang);
+    }
+  }
+});
+htmlObserver.observe(document.documentElement, { attributes: true });
+// --- End Add ---
 
 // Store last loaded products for search filtering
 let lastLoadedProducts = [];
@@ -171,6 +210,10 @@ function displayProducts(products) {
     .map((product) => {
       // Check if product is selected
       const isSelected = selectedProducts.some((p) => p.id === product.id);
+      // Add product description fallback for AI
+      const description = product.description
+        ? product.description
+        : "No description available.";
       return `
       <div class="product-card${isSelected ? " selected" : ""}" data-id="${
         product.id
@@ -181,6 +224,7 @@ function displayProducts(products) {
         <div class="product-info">
           <h3>${product.name}</h3>
           <p>${product.brand}</p>
+          <div class="product-desc" style="display:none;">${description}</div>
         </div>
       </div>
     `;
