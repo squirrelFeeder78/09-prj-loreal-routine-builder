@@ -601,16 +601,60 @@ chatForm.addEventListener("submit", async (e) => {
         role: "assistant",
         content: data.choices[0].message.content,
       });
-      // Display the full chat history
+      // --- BEGIN: Stylized chat history display ---
+      // Show the full chat history, keeping formatting for AI answers
       chatWindow.dir = isRTL ? "rtl" : "ltr"; // Apply RTL to chat window
       chatWindow.innerHTML = conversationMessages
         .filter((msg) => msg.role !== "system")
-        .map((msg) =>
-          msg.role === "user"
-            ? `<div class="user-message">${msg.content}</div>`
-            : `<div class="ai-response">${msg.content}</div>`
-        )
+        .map((msg) => {
+          if (msg.role === "user") {
+            return `<div class="user-message" style="background:#fff; border-radius:10px; margin:12px 0; padding:10px 14px; font-size:1.1rem; color:#222; box-shadow:0 2px 8px #e3a53522;">${msg.content}</div>`;
+          } else if (msg.role === "assistant") {
+            // Format AI response: show first paragraph as intro, then steps/bullets as list
+            const aiText = msg.content;
+            let formatted = "";
+            if (aiText.match(/\n\d+\./)) {
+              const stepMatch = aiText.match(/\n\d+\./);
+              const stepIndex = stepMatch ? aiText.indexOf(stepMatch[0]) : -1;
+              let introText = "";
+              let stepsText = aiText;
+              if (stepIndex > 0) {
+                introText = aiText.substring(0, stepIndex).trim();
+                stepsText = aiText.substring(stepIndex);
+              }
+              const steps = stepsText
+                .split(/\n\d+\.\s?/)
+                .filter((s) => s.trim() !== "");
+              if (introText) {
+                formatted += `<div style="font-size:1.15rem; margin-bottom:12px;">${introText}</div>`;
+              }
+              formatted += steps
+                .slice(0, 5)
+                .map(
+                  (step, i) =>
+                    `<li><strong>Step ${i + 1}:</strong> ${step.trim()}</li>`
+                )
+                .join("");
+              formatted = `<div>${formatted}</div>`;
+              formatted = formatted.replace(
+                /(<div[^>]*>.*?<\/div>)(.*)/s,
+                `$1<ol style="text-align:left; font-size:1.15rem; margin:0 0 12px 0;">$2</ol>`
+              );
+            } else if (aiText.includes("\n-")) {
+              const bullets = aiText.split("\n-").slice(1, 6);
+              formatted = bullets.map((b) => `<li>${b.trim()}</li>`).join("");
+              formatted = `<ul style="text-align:left; font-size:1.15rem; margin:0 0 12px 0;">${formatted}</ul>`;
+            } else {
+              const firstParagraph = aiText.split("\n\n")[0];
+              formatted = `<div style="font-size:1.15rem; margin-bottom:12px;">${firstParagraph}</div>`;
+            }
+            // Wrap each AI response in a stylized card
+            return `<div style="background:#fffbea; border-radius:18px; padding:36px 28px; margin:36px auto; box-shadow:0 4px 18px rgba(0,0,0,0.10); max-width:700px; text-align:left; border:1px solid #ffe58f; font-size:1.1rem; color:#222;">${formatted}<div style="font-size:1rem; color:#888; margin-top:18px;">For more details, ask a follow-up question below!</div></div>`;
+          }
+          return "";
+        })
         .join("");
+      // --- END: Stylized chat history display ---
     } else {
       chatWindow.innerHTML += `<div class="error-message">Sorry, no answer was generated. Please try again.</div>`;
     }
@@ -620,20 +664,3 @@ chatForm.addEventListener("submit", async (e) => {
   // Clear input after sending
   chatForm.querySelector("input, textarea").value = "";
 });
-
-// On page load, restore selected products from localStorage and products for search
-loadProducts().then((products) => {
-  lastLoadedProducts = products;
-});
-loadSelectedProductsFromStorage();
-updateSelectedProductsList();
-loadSelectedProductsFromStorage();
-
-// Initial selected products list
-updateSelectedProductsList();
-// Initial selected products list
-updateSelectedProductsList();
-loadSelectedProductsFromStorage();
-
-// Initial selected products list
-updateSelectedProductsList();
